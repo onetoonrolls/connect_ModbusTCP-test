@@ -91,22 +91,29 @@ if __name__ == "__main__":
     ip = '172.16.5.129'
     value = 10
     round_count =2
-    client = connect_client(ip)
-    print(client) #test status connect
 
-    write_bit_register(value)
-    test_result_holdding = read_holding_register(round_count)
-    
-    #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    #holding
+        #holding
     #ip_ModAdd = 0x1100
     mac_Modadd = 0x0000
     port_Modadd = 0x0042
     status_add = 0x038A
     #input
-    deID = 0x0000
+    deID_18 = 0x0008
+    deID_36 = 0x0009
     version_add =0x0001
 
+    client = connect_client(ip)
+    print(client) #test status connect
+
+
+#   write_bit_register(value)
+#   test_result_holdding = read_holding_register(round_count)
+    
+    mac_read = client.read_holding_registers(0x0000,3,deID_36)
+    print(mac_read)
+    #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    '''
     Device_ID= str(read_input_register())
     IP_read = ip
     mac_read = mac_address_convertTOstring(read_holding_register(3,mac_Modadd))
@@ -118,3 +125,6 @@ if __name__ == "__main__":
 
     ini_print("EMU-B20MC",status,FTP_data,firmVersion_read,Device_ID)
     test_dic_convert = read_INI_to_dict(path)
+    '''
+    #close connection
+    client.close()
