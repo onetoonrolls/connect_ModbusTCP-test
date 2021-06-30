@@ -1,0 +1,7 @@
+python -m venv venv
+venv\Scripts\activate.bat
+deactive
+
+pip freeze > reqiurment.txt
+
+cls <= clear screen cmd
