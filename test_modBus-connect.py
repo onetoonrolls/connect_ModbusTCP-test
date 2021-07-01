@@ -1,53 +1,93 @@
-
 from os import path
 from pymodbus import client
 from pymodbus.client.sync import ModbusSerialClient, ModbusTcpClient
 import configparser
 
-#write single&multi register values
-#bit_address = device bit-address 
-#bit_value = payload 
-#num_regist = in case multi-writ **default =1**
-#unit =0 #number init-device **default is 0 --upon device***
+from pymodbus.file_message import WriteFileRecordRequest
 
-async def write_bit_register(bit_value=1,bit_address=0,num_regist=1,unit=0):
-    await client.write_registers(bit_address,[bit_value]*num_regist,unit)
 
-#read holding-regist values
-
-def print_outputFrom_register(round_count,result):
-    for i in range(round_count) :
-        print("round"+str(i)+": "+result[i])
-
-async def read_holding_register(count=1,address_HR=0):
-    result_HR = await client.read_holding_registers(address_HR,count)
-    print_outputFrom_register(count,result_HR)
-    return result_HR
-
-#read input-regist values
-async def read_input_register(count=1,address_IR=0):
-    result_IR = await client.read_input_registers(address_IR,count)
-    print_outputFrom_register(count,result_IR)
-    return result_IR
+#test display list from module
+def print_outputFrom_register(result):
+    for i in range(result) :
+        print("round"+str(i)+": "+hex(result[i]))
 
 #connect Modbus TCP client
 def connect_client(ip_add):
     return ModbusTcpClient(ip_add)
 
 #convert to mac(HEX) to string
-def mac_address_convertTOstring(mac):
-    return str(mac[0]+mac[1]+mac[2])
+def mac_convertTOstring(mac):
+    hex_mac = str(hex(mac[0])+hex(mac[1])+hex(mac[2]))
+    hex_mac = "0x"+uppercase_string(hex_mac.replace("0x",""))
+   # hex_mac = hex_mac.upper
+    return hex_mac
 
 #convert status to string
 def status_convert(stu):
-    if(stu == 0x00000):
+    if(stu == hex(0)):
         return "normal status"
-    elif(stu == 0x0099):
+    elif(stu == hex(99)):
         return "abnormal status"
 
-#convert version to String
-#def version_convert(ver):
- #   if(ver )
+def uppercase_string(word):
+    NWord =""
+    for i in word:
+        switcher = {
+            "a": "A",
+            "b": "B",
+            "c": "C",
+            "d": "D",
+            "e": "E",
+            "f": "F"   
+        }
+        NWord += switcher.get(i,i)
+    return NWord
+            
+
+
+#///////////////////////////////////////////////////////////////////////////////////////////////////////
+# core function py modbus to user 
+#///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#write single&multi register values
+#bit_address = device bit-address 
+#bit_value = payload 
+#num_regist = in case multi-writ **default =1**
+def write_bit_register(bit_value=1,bit_address=0,num_regist=1):
+    client.write_registers(bit_address,[bit_value]*num_regist)
+
+def mac_read():
+    mac_addr = 0x0000
+    mac_read = mac_convertTOstring(client.read_holding_registers(mac_addr,3).registers)
+    return mac_read
+
+def fireware_read():
+     version_addr =0x0001
+     firmVersion_read = client.read_input_registers(version_addr,1).registers
+     return hex(firmVersion_read[0])
+
+def device_id_read():
+    deID_addr = 0x0000
+    deID = client.read_input_registers(deID_addr,1).registers
+    return  hex(deID[0])
+
+def status_read():
+    status_addr = 0x038A
+    status = client.read_input_registers(status_addr,4).registers
+    MES_sta = status_convert(hex(status[0]))
+    SDC_sta = status_convert(hex(status[1]))
+    NTP_sta = status_convert(hex(status[2]))
+    TCP_sta = status_convert(hex(status[3]))
+    return MES_sta,SDC_sta,NTP_sta,TCP_sta
+
+def update_firmware():
+    OTA_update_addr = 0xFFFFFF63C0
+    write_bit_register(0x1,OTA_update_addr,1)
+
+
+#///////////////////////////////////////////////////////////////////////////////////////////////////////
+# core function py configparser to user 
+#///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #print data to ini file
 #device_name = string
@@ -60,7 +100,6 @@ def ini_print(device_name,status,FTP_data,firmware_version,id):
     path ='ini/'
     file_name = path+'config_'+device_name+'.ini'
     Device_data ={"id":id,"status":status}
-    #FTP_data ={"ip":"127.0.0.1","mac":"","psw":"123456","port":"0000"}
     up_version ={"available version":firmware_version}
     data[device_name] = Device_data
     data['FTP server'] = FTP_data
@@ -89,42 +128,35 @@ if __name__ == "__main__":
     path = '/ini/EMU-B20MC'
     #connect client
     ip = '172.16.5.129'
-    value = 10
-    round_count =2
-
-        #holding
-    #ip_ModAdd = 0x1100
-    mac_Modadd = 0x0000
-    port_Modadd = 0x0042
-    status_add = 0x038A
-    #input
-    deID_18 = 0x0008
-    deID_36 = 0x0009
-    version_add =0x0001
-
+    Word = "ac2d"
+    Word = uppercase_string(Word)
+    print(Word)
+    '''
     client = connect_client(ip)
     print(client) #test status connect
+    #test read
+    mac = mac_read()
+    print("\nmac: "+ mac)
+    device_ID = device_id_read()
+    print("\ndevice ID: "+str(device_ID))
+    firmVersion = fireware_read()
+    print("\nver.device: "+str(firmVersion))
+    MES,SDC,NTP,TCP = status_read()
+    print("MES status: "+MES)
+    print("\nSDC status: "+SDC)
+    print("\nNTP status: "+NTP)
+    print("\nTCP status: "+TCP)
 
+    #test write
 
-#   write_bit_register(value)
-#   test_result_holdding = read_holding_register(round_count)
-    
-    mac_read = client.read_holding_registers(0x0000,3,deID_36)
-    print(mac_read)
-    #///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    #///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    '''
-    Device_ID= str(read_input_register())
-    IP_read = ip
-    mac_read = mac_address_convertTOstring(read_holding_register(3,mac_Modadd))
-    port_read = str(read_holding_register(1,port_Modadd))
-    status = status_convert(read_input_register(1,status_add))
-    firmVersion_read = str(read_input_register(1,version_add))
-
-    FTP_data={"ip address":IP_read,"mac address":mac_read,"port":port_read}
-
-    ini_print("EMU-B20MC",status,FTP_data,firmVersion_read,Device_ID)
+    FTP_data={"ip address":ip,"mac address":mac}
+    status = {"MES status":MES,"SDC status":SDC,"NTP status":NTP,"TCP status":TCP}
+    ini_print("EMU-B20MC",status,FTP_data,firmVersion,device_ID)
     test_dic_convert = read_INI_to_dict(path)
-    '''
+    print(test_dic_convert)
+
     #close connection
     client.close()
+    '''
